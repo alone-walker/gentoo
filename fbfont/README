@@ -1,0 +1,10 @@
+
+
+Fbfont:
+patch for kernel compiled-in fonts, support terminus 12x24 font which is a bigger font and can be used on high resolution display
+
+Fixme:
+ter-i22n.psf is not cp437
+
+Usage:
+kernel boot option in grub2:  fbcon=font:TER12x24

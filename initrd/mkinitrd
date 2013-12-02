@@ -1,0 +1,104 @@
+#!/bin/bash
+
+RAMROOT="initramfs"
+MODS="ext4 dm-mod"
+LVMPATH="/root/ROOT/sbin/lvm.static"
+LVMCONFPATH="/etc/lvm/lvm.conf"
+BUSYBOXPATH="/bin/busybox"
+
+if [[ "gentoo" == $(uname -r | cut -d'-' -f2) ]]; then
+	echo "Gentoo release............."
+	MODS_PATH="/lib64/modules/$(uname -r)"
+else
+	echo "Please set modules path"
+	exit
+fi
+
+echo "mkdir for proc sys dev etc bin sbin"
+mkdir -p ${RAMROOT}/{proc,sys,dev,etc,bin,sbin,newroot}
+mkdir -p ${RAMROOT}/${MODS_PATH}/
+(cd ${RAMROOT}; ln -s lib64 lib)
+
+echo "cp busybox"
+cp ${BUSYBOXPATH} ${RAMROOT}/bin/
+chmod +x ${RAMROOT}/bin/busybox
+(cd ${RAMROOT}/bin/; ln -s busybox sh)
+chmod +x ${RAMROOT}/bin/sh
+
+echo "cp lvm.static"
+cp ${LVMPATH} ${RAMROOT}/sbin
+chmod +x ${RAMROOT}/sbin/lvm.static
+
+echo "find all modules"
+for M in $MODS; do
+	 MODS+=$(find ${MODS_PATH} -name ${M}.ko -exec modinfo {} \; | grep '^depends' | cut -d':' -f2 | sed 's/,/ /g')
+done
+
+echo "cp all modules"
+for M in $MODS; do
+	fname=$(find ${MODS_PATH} -name ${M}.ko)
+	dname=${RAMROOT}"/"$(dirname ${fname})
+	mkdir -p ${dname}
+	cp ${fname} ${dname}
+done
+
+echo "set init script"
+
+echo '#!/bin/sh
+
+#Mount things needed by this script
+mount  -n -t proc     /proc     /proc
+mount  -n -t sysfs    none      /sys
+mount  -n -t devtmpfs devtmpfs   /dev
+
+#
+#ln -s /proc/mounts /etc/mtab
+
+#Disable kernel messages from popping onto the screen
+echo 0 > /proc/sys/kernel/printk
+
+#Create all the symlinks to /bin/busybox
+busybox --install -s
+
+init="/usr/lib64/systemd/systemd"
+root="/dev/mapper/fedora-gentoo"
+home="/dev/mapper/fedora-home"
+swap="/dev/mapper/fedora-swap"
+
+#
+echo "insert module dm-mod for lvm........."
+modprobe dm-mod
+echo "insert module ext4 for root filesystem..........."
+modprobe ext4
+
+#
+echo "scanning lvm..........."
+/sbin/lvm.static vgscan --mknodes
+/sbin/lvm.static vgchange -a y
+
+#Mount the root device
+echo "mount root..........."
+mount -t ext4 "${root}" /newroot
+echo "mount home..........."
+mount -t ext4 "${home}" /newroot/home
+echo "mount swap..........."
+swapon "${swap}"
+
+umount /sys
+mount --move /dev /newroot/dev
+umount /proc
+echo "switch to real root"
+exec switch_root /newroot "${init}"
+
+#This will only be run if the exec above failed
+echo "Failed to switch_root, dropping to a shell"
+exec sh' > ${RAMROOT}/init
+
+chmod +x ${RAMROOT}/init
+
+echo "cpio gzip"
+(cd ${RAMROOT}; find . | cpio -H newc -o > ../rd.cpio) 
+cat rd.cpio | gzip > rd.igz
+
+echo "clean"
+rm -r rd.cpio "$RAMROOT"
