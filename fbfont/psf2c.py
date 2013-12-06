@@ -3,7 +3,7 @@
 import sys
 
 def barr2i(bytes):
-	return bytes[0] + 256*bytes[1] + 256**256*bytes[2] + 256*256*256*bytes[3]
+	return bytes[0] + 256*bytes[1] + 256*256*bytes[2] + 256*256*256*bytes[3]
 
 def show_row(bytes):
 	print "\t\t0x%.2x, 0x%.2x,   /*  %.8s%s  */" %(bytes[0], bytes[1], (bin(bytes[0]) + '0'*10)[2:10], (bin(bytes[1]) + '0'*10)[2:w-6])
@@ -52,4 +52,3 @@ if __name__ == '__main__':
 	print "\t\t.pref	= -1,"
 	print "#endif"
 	print "};"
-

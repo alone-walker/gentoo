@@ -4,7 +4,6 @@
 
 # Font handling
 font-objs := fonts.o
-font-objs += font_ter12x24.o
 
 font-objs-$(CONFIG_FONT_SUN8x16)   += font_sun8x16.o
 font-objs-$(CONFIG_FONT_SUN12x22)  += font_sun12x22.o
