@@ -11,7 +11,7 @@ if [[ "gentoo" == $(uname -r | cut -d'-' -f2) ]]; then
 	MODS_PATH="/lib64/modules/$(uname -r)"
 else
 	echo "Please set modules path"
-	exit
+	MODS_PATH="/lib64/modules/"
 fi
 
 echo "mkdir for proc sys dev etc bin sbin"
@@ -146,4 +146,4 @@ echo "cpio gzip"
 cat rd.cpio | gzip > rd.igz
 
 echo "clean"
-rm -r rd.cpio "$RAMROOT"
+#rm -r rd.cpio "$RAMROOT"
